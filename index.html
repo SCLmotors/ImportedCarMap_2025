@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>샤오펑 한국 거점 분석 | 드릴다운 지도</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f4f6fb;color:#1a1f36;height:100vh;overflow:hidden;}
+.hdr{background:#fff;border-bottom:1px solid #e2e5ed;padding:11px 20px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.hdr h1{font-size:15px;font-weight:700;}
+.b1{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+.b2{background:#f97316;color:#fff;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+.sub{color:#9ca3af;font-size:10px;margin-left:auto;}
+.layout{display:flex;height:calc(100vh - 44px);}
+.side{width:195px;min-width:195px;background:#fff;border-right:1px solid #e2e5ed;padding:12px 9px;overflow-y:auto;display:flex;flex-direction:column;gap:11px;}
+.stl{font-size:9px;font-weight:700;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.pbtn{display:flex;align-items:center;gap:7px;width:100%;padding:6px 8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;color:#6b7280;font-size:11px;font-family:inherit;text-align:left;margin-bottom:2px;}
+.pbtn.on{background:#eff6ff;border-color:#2563eb;color:#1e40af;font-weight:600;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.xnote{font-size:9px;color:#f97316;padding:0 2px;margin-top:2px;}
+.legbar{height:12px;border-radius:3px;margin:5px 0 3px;border:1px solid #e5e7eb;}
+.leglbl{display:flex;justify-content:space-between;font-size:9px;color:#9ca3af;}
+.ibox{background:#f9fafb;border-radius:7px;padding:9px;border:1px solid #e5e7eb;font-size:11px;}
+.iname{font-weight:700;color:#1a1f36;margin-bottom:6px;font-size:12px;}
+.irow{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f0f0f0;color:#6b7280;}
+.irow:last-of-type{border:none;}
+.irow .v{font-weight:600;color:#1a1f36;}
+.itot{display:flex;justify-content:space-between;margin-top:5px;padding-top:5px;border-top:2px solid #2563eb;font-weight:700;color:#2563eb;font-size:11px;}
+.iph{color:#9ca3af;text-align:center;padding:10px 0;line-height:1.7;font-size:11px;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #e2e5ed;padding:0 14px;flex-shrink:0;}
+.tab{padding:8px 15px;font-size:12px;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;}
+.tab.on{color:#2563eb;border-bottom-color:#2563eb;font-weight:600;}
+.content{flex:1;overflow:hidden;position:relative;}
+.panel{display:none;width:100%;height:100%;}
+.panel.on{display:flex;}
+/* 지도 영역 */
+.mapwrap{flex:1;position:relative;overflow:hidden;background:#f4f6fb;}
+/* 전국 / 드릴다운 슬라이드 */
+.slide-container{position:absolute;inset:0;display:flex;width:200%;transition:transform 0.55s cubic-bezier(0.4,0,0.2,1);}
+.zoom-btns{position:absolute;bottom:12px;right:12px;z-index:20;display:flex;flex-direction:column;gap:4px;}
+.zoom-btn{width:30px;height:30px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.08);font-family:inherit;}
+.zoom-btn:hover{background:#eff6ff;border-color:#2563eb;}
+.slide-container.drilled{transform:translateX(-50%);}
+.slide-pane{width:50%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;padding:8px;}
+.slide-pane svg{max-width:100%;max-height:100%;}
+/* 뒤로가기 */
+.back-btn{position:absolute;top:10px;left:10px;z-index:20;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;color:#2563eb;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08);display:none;align-items:center;gap:5px;font-family:inherit;}
+.back-btn.show{display:flex;}
+.back-btn:hover{background:#eff6ff;}
+.breadcrumb{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(255,255,255,0.95);border:1px solid #e5e7eb;border-radius:20px;padding:4px 14px;font-size:11px;color:#374151;font-weight:500;pointer-events:none;white-space:nowrap;display:none;}
+.breadcrumb.show{display:block;}
+.hint-pill{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(37,99,235,0.85);color:#fff;border-radius:20px;padding:5px 14px;font-size:11px;pointer-events:none;white-space:nowrap;z-index:5;transition:opacity .3s;}
+/* 분석 패널 */
+.apanel{width:300px;min-width:300px;background:#fff;border-left:1px solid #e2e5ed;overflow-y:auto;padding:15px 13px;display:flex;flex-direction:column;gap:11px;}
+.ap-hd{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.xbdg{background:#f97316;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;}
+.ap-desc{font-size:12px;color:#6b7280;line-height:1.65;}
+.sec-hd{font-size:11px;font-weight:700;color:#374151;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid #f0f0f0;}
+.aitem{background:#f9fafb;border-radius:6px;padding:8px 9px;margin-bottom:5px;border-left:3px solid #e5e7eb;}
+.aitem.r1{border-left-color:#ef4444;}.aitem.r2{border-left-color:#f97316;}.aitem.r3{border-left-color:#3b82f6;}
+.atit{font-size:11px;font-weight:700;color:#374151;margin-bottom:2px;}
+.astat{font-size:11px;font-weight:600;color:#1a1f36;margin-bottom:2px;}
+.adesc{font-size:10px;color:#6b7280;line-height:1.55;}
+.hint{background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 9px;font-size:10px;color:#7c2d12;line-height:1.6;}
+path.reg{cursor:pointer;stroke:#fff;stroke-width:0.7;}
+.ap-kv{display:flex;justify-content:space-between;align-items:center;background:#f0f4ff;border-radius:5px;padding:5px 8px;font-size:11px;}
+.ap-lbl{color:#6b7280;font-weight:500;}
+.ap-val{color:#2563eb;font-weight:700;}
+.ap-analysis{font-size:11px;color:#374151;line-height:1.65;background:#f9fafb;border-radius:5px;padding:7px 9px;border-left:3px solid #2563eb;}
+.ap-rec{font-size:11px;color:#374151;line-height:1.65;background:#fff7ed;border-radius:5px;padding:7px 9px;border-left:3px solid #f97316;}
+path.reg:hover{stroke:#1a1f36;stroke-width:2;opacity:0.82;}
+#tip{position:fixed;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:11px;pointer-events:none;display:none;z-index:9999;min-width:155px;box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.tn{font-size:12px;font-weight:700;color:#1a1f36;margin-bottom:5px;}
+.tr{display:flex;justify-content:space-between;gap:14px;padding:1px 0;color:#6b7280;font-size:11px;}
+.tr b{color:#1a1f36;}
+.tt{border-top:1px solid #f0f0f0;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:700;color:#2563eb;font-size:11px;}
+/* 데이터 로드 오버레이 */
+#data-ov{position:fixed;inset:0;background:rgba(244,246,251,0.97);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>&#127758; 2025 수입차 판매 지역별 히트맵</h1>
+  <span class="b1">KAIDA</span><span class="b2">수입차 시장 분석</span>
+  <span class="sub">도/시 클릭 &rarr; 드릴다운 확대 &#183; 진할수록 판매량 많음 &#183; &#9733; = 샤오펑 예상가격</span>
+</div>
+<div class="layout">
+  <aside class="side">
+    <div>
+      <div class="stl">가격대 선택</div>
+      <button class="pbtn on" data-p="all" onclick="setP(this)"><span class="dot" style="background:#6b7280"></span>전체 합산</button>
+      <button class="pbtn" data-p="30000이하" onclick="setP(this)"><span class="dot" style="background:#06b6d4"></span>~3천만</button>
+      <button class="pbtn" data-p="30000-40000" onclick="setP(this)"><span class="dot" style="background:#10b981"></span>3~4천만</button>
+      <button class="pbtn" data-p="40000-50000" onclick="setP(this)"><span class="dot" style="background:#f59e0b"></span>4~5천만 &#9733;</button>
+      <button class="pbtn" data-p="50000-70000" onclick="setP(this)"><span class="dot" style="background:#f97316"></span>5~7천만 &#9733;</button>
+      <button class="pbtn" data-p="70000-100000" onclick="setP(this)"><span class="dot" style="background:#ef4444"></span>7천~1억 &#9733;</button>
+      <button class="pbtn" data-p="100000-150000" onclick="setP(this)"><span class="dot" style="background:#8b5cf6"></span>1~1.5억</button>
+      <button class="pbtn" data-p="150000이상" onclick="setP(this)"><span class="dot" style="background:#6d28d9"></span>1.5억+</button>
+      <div class="xnote">&#9733; 샤오펑 예상 가격대</div>
+    </div>
+    <div>
+      <div class="stl">범례</div>
+      <div class="legbar" id="legbar"></div>
+      <div class="leglbl"><span>낮음</span><span id="legmax">높음</span></div>
+    </div>
+    <div>
+      <div class="stl">지역 클릭 상세</div>
+      <div class="ibox" id="ibox"><div class="iph">지도에서<br>지역을 클릭하세요</div></div>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="tabs">
+      <button class="tab on" onclick="sw(this,'nat')">&#127757; 전국 지도</button>
+      <button class="tab" onclick="sw(this,'seoul')">&#127970; 서울 구별 지도</button>
+    </div>
+    <div class="content">
+      <!-- 전국 패널 -->
+      <div class="panel on" id="panel-nat">
+        <div class="mapwrap" id="mapwrap-nat">
+          <div class="slide-container" id="slide-nat">
+            <!-- 전국 지도 -->
+            <div class="slide-pane" id="pane-national">
+              <svg id="svgNat" viewBox="0 0 440 580" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <!-- 드릴다운 지도 -->
+            <div class="slide-pane" id="pane-drill">
+              <svg id="svgDrill" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+          <button class="back-btn" id="back-btn" onclick="drillUp()">&#8592; 전국으로</button>
+          <div class="zoom-btns" id="zoom-btns">
+            <button class="zoom-btn" onclick="doZoom(1.3)" title="확대">+</button>
+            <button class="zoom-btn" onclick="doZoom(0.77)" title="축소">&#8722;</button>
+            <button class="zoom-btn" onclick="resetZoom()" title="초기화" style="font-size:11px;">&#8634;</button>
+          </div>
+          <div class="breadcrumb" id="breadcrumb"></div>
+          <div class="hint-pill" id="hint-pill">도/시 클릭 &rarr; 시별 상세 지도로 확대</div>
+        </div>
+        <div class="apanel" id="apanel-nat">
+          <div><div class="ap-hd"><span class="xbdg">MARKET</span> <span id="ap-title">전국 수입차 시장 분석</span></div></div>
+          <div id="ap-body">
+            <div class="ap-desc" style="margin-bottom:8px;">지도의 <strong>도/광역시를 클릭</strong>하면 시별 상세 지도와 분석이 표시됩니다.</div>
+            <div class="sec-hd">&#127942; 핵심 거점 — 즉시 진출</div>
+            <div class="aitem r1">
+              <div class="atit">&#9312; 경기 (성남·수원·고양)</div>
+              <div class="astat">전국 최대 시장 32,886대 | 7천만~1억 51.8%</div>
+              <div class="adesc">판교·분당 IT 얼리어답터 밀집. 신규 브랜드 수용도 전국 최고. 수도권 허브 역할.</div>
+            </div>
+            <div class="aitem r1">
+              <div class="atit">&#9313; 인천 (송도·청라)</div>
+              <div class="astat">26,491대 | 고가(1.5억+) 21.2%</div>
+              <div class="adesc">송도 글로벌 소비층. 공항·항만 물류 거점. 경기와 20분 시너지.</div>
+            </div>
+            <div class="aitem r1">
+              <div class="atit">&#9314; 부산 (해운대·서면)</div>
+              <div class="astat">31,883대 | 초고가(1.5억+) 25.8% 전국 최고</div>
+              <div class="adesc">수도권 외 최대. 프리미엄 수요 가장 두텁고 경남 전체 배후 시장 보유.</div>
+            </div>
+            <div class="sec-hd" style="margin-top:10px;">&#128205; 전략 거점 — 단계적 확장</div>
+            <div class="aitem r2">
+              <div class="atit">&#9315; 대구 (수성구)</div>
+              <div class="astat">9,497대 | 7천만~1억 51.6%</div>
+              <div class="adesc">의료·법조 전문직 집중. 영남 내륙 허브. 경북 배후 수요 흡수.</div>
+            </div>
+            <div class="aitem r2">
+              <div class="atit">&#9316; 대전 (유성구·대덕특구)</div>
+              <div class="astat">3,225대 | 충청권 합산 7,674대</div>
+              <div class="adesc">연구원·IT 기술 친화 소비층. 1개 거점으로 충청권 전체 커버.</div>
+            </div>
+            <div class="hint" style="margin-top:6px;"><strong>시장 전략:</strong> 수입차 전 가격대에서 <strong>7천만~1억 구간이 전국 공통 1위(45~60%)</strong>. 이 구간의 프리미엄 포지셔닝이 핵심. 경기·인천·서울 수도권이 전국 판매의 약 <strong>52%</strong> 집중.</div>
+          </div>
+        </div>
+      </div>
+      <!-- 서울 패널 -->
+      <div class="panel" id="panel-seoul">
+        <div class="mapwrap">
+          <svg id="svgSeoul" viewBox="0 0 500 380" preserveAspectRatio="xMidYMid meet" style="max-width:100%;max-height:100%;"></svg>
+        </div>
+        <div class="apanel">
+          <div><div class="ap-hd"><span class="xbdg">MARKET</span> 서울 구별 시장 분석</div></div>
+          <div class="ap-desc" style="margin-top:4px;">구를 클릭하면 상세 판매 데이터가 좌측에 표시됩니다.</div>
+          <div class="sec-hd" style="margin-top:8px;">&#127942; 핵심 거점</div>
+          <div class="aitem r1">
+            <div class="atit">&#9312; 강남구 — 브랜드 론칭 최적지</div>
+            <div class="astat">서울 1위 | 7천만~1억 55% 집중</div>
+            <div class="adesc">청담·도곡동 딜러십 최다 밀집. 고소득 전문직·기업인 집중. 신규 브랜드 미디어 노출 효과 전국 최고. 독립 체험 쇼룸 형태 진입 권장.</div>
+          </div>
+          <div class="aitem r1">
+            <div class="atit">&#9313; 서초구 — 자동차 클러스터 인프라</div>
+            <div class="astat">서울 2위 | 양재 오토갤러리 소재지</div>
+            <div class="adesc">양재동 자동차 클러스터로 수입차 구매 문화 정착. 강남보다 경쟁 낮고 AS 인프라 구축 용이. 강남과 투 거점 시너지.</div>
+          </div>
+          <div class="sec-hd" style="margin-top:8px;">&#128205; 전략·체험 거점</div>
+          <div class="aitem r2">
+            <div class="atit">&#9314; 송파구 — 가족 SUV 수요 핵심</div>
+            <div class="astat">서울 3위 | 잠실 대형 상권 인접</div>
+            <div class="adesc">30~40대 가족 단위 대형 SUV 수요 서울 최강. 롯데월드몰 팝업으로 브랜드 노출 극대화.</div>
+          </div>
+          <div class="aitem r2">
+            <div class="atit">&#9315; 영등포구 — 서울 서남권 허브</div>
+            <div class="astat">여의도 금융가 + 목동 중산층 이중 수요</div>
+            <div class="adesc">금융가 직장인 합리적 중가 수요 + 목동 가족 SUV 수요. 강서·구로·마포 서남권 전체 커버.</div>
+          </div>
+          <div class="aitem r3">
+            <div class="atit">&#9316; 강서구(마곡) — 신흥 성장 시장</div>
+            <div class="astat">마곡 IT·바이오 산단 급성장 중</div>
+            <div class="adesc">마곡 LG사이언스파크 조성 후 수입차 수요 급증. 강남 대비 임대료 낮아 비용 효율 높음.</div>
+          </div>
+          <div class="aitem r3">
+            <div class="atit">&#9317; 마포·성동 — 브랜드 체험 거점</div>
+            <div class="astat">홍대·성수 팝업 성지</div>
+            <div class="adesc">MZ세대 트렌드 선도 지역. 판매보다 브랜드 인지도·SNS 바이럴 효과 극대화 목적.</div>
+          </div>
+          <div class="hint" style="margin-top:6px;"><strong>서울 시장 특성:</strong> 전 구에서 <strong>7천만~1억이 50% 이상</strong> 지배. 강남3구(강남·서초·송파)가 서울 전체의 <strong>약 35%</strong> 집중. 마곡·성수는 향후 5년 성장성 최고.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+<!-- 데이터 로드 오버레이 -->
+<div id="data-ov">
+  <div style="font-size:22px;font-weight:700;color:#1a1f36;">&#128194; KAIDA 데이터 로드</div>
+  <div style="font-size:13px;color:#6b7280;">KAIDA 폴더(모든 xls 파일)를 선택해주세요</div>
+  <input type="file" id="kld" webkitdirectory multiple accept=".xls,.xlsx" style="font-size:13px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;">
+  <div id="kprog" style="font-size:12px;color:#9ca3af;min-height:20px;"></div>
+  <div style="font-size:11px;color:#c3cfe0;">지도 데이터는 온라인(GitHub)에서 자동으로 불러옵니다</div>
+</div>
+
+<script>
+
+var ANALYSIS = {
+  // ── 전국 시도 ──
+  "경기": {
+    tier:"핵심거점", rank:1,
+    summary:"전국 최대 수입차 시장(32,886대). 7천만~1억 구간이 51.8%로 압도적",
+    top_price:"7천만~1억(51.8%)",
+    detail:"성남 분당·판교는 IT 종사자 중심 얼리어답터 밀집 지역으로 신규 브랜드 수용도 전국 최고. 수원·용인은 신도시 40대 전문직 가족 단위 SUV 수요 강함. 인천·서울과의 접근성으로 수도권 전체 수요의 허브 역할.",
+    recommend:"판교 테크노밸리 인근 독립 쇼룸 또는 수원 광교 복합몰 체험형 매장 권장. 1순위 진출 거점.",
+    cities:["성남(분당·판교)","수원","용인","고양"]
+  },
+  "인천": {
+    tier:"핵심거점", rank:2,
+    summary:"총 26,491대. 1.5억+ 고가 비중 21.2%로 경기보다 프리미엄 수요 두터움",
+    top_price:"7천만~1억(45.7%) · 1.5억+(21.2%)",
+    detail:"송도 국제도시는 외국계 기업 종사자·글로벌 라이프스타일 소비층 집중으로 신규 해외 브랜드 수용도 높음. 공항·항만 물류 인프라로 차량 입고 비용 절감 가능. 청라·영종 신도시는 IT·금융 종사자 성장 중.",
+    recommend:"송도 컨벤시아 인근 플래그십 + 물류 거점 동시 운영 가능. 수도권 2번째 거점.",
+    cities:["송도","청라","영종"]
+  },
+  "부산": {
+    tier:"핵심거점", rank:3,
+    summary:"총 31,883대로 수도권 외 전국 최대. 1.5억+ 초고가 비중 25.8%로 전국 최고 수준",
+    top_price:"7천만~1억(41.7%) · 1.5억+(25.8%)",
+    detail:"해운대·수영구는 고급 수입차 딜러십 집중 프리미엄 상권. 서면은 젊은 소비층의 5~7천만원 중가 수요 형성. 항만 물류 인프라로 차량 입고 비용 절감 가능. 경남 전체(17,918대) 배후 시장 허브.",
+    recommend:"해운대 마린시티 프리미엄 쇼룸 또는 서면 복합몰 체험 매장. 수도권 다음 최우선 확장 거점.",
+    cities:["해운대","수영","서면"]
+  },
+  "경남": {
+    tier:"전략거점", rank:4,
+    summary:"총 17,918대. 전국 4위로 부산과 합산 시 국내 최대 권역 형성",
+    top_price:"7천만~1억(47.7%) · 1.5억+(21.3%)",
+    detail:"창원시는 대규모 제조업·방산 기반 기술직·관리직 고소득층이 7천만~1억 프리미엄 세단 선호. 고가 차량(1.5억+) 비중도 높아 구매력 검증된 시장. 김해·양산은 부산 인접 베드타운으로 수입차 수요가 부산과 연동됨.",
+    recommend:"창원 상남동 수입차 딜러 밀집지역 진입. 경남 전체를 부산·창원 투 거점으로 커버.",
+    cities:["창원","김해","양산"]
+  },
+  "대구": {
+    tier:"전략거점", rank:5,
+    summary:"총 9,497대. 7천만~1억 비중 51.6%로 경기와 유사한 프리미엄 중형 선호 구조",
+    top_price:"7천만~1억(51.6%) · 1.5억+(19.9%)",
+    detail:"수성구는 의료·법조·교육 전문직이 집중된 대구 최고 소득지역으로 수입차 밀도 높음. 달서구 성서 산업단지 기업인층도 핵심 고객. 경북(포항·구미·경주·안동) 전체를 배후 수요로 흡수 가능한 영남 내륙 허브.",
+    recommend:"수성구 범어동·황금동 수입차 클러스터 진입. 영남 내륙 AS 거점 겸임 가능.",
+    cities:["수성구","달서구"]
+  },
+  "대전": {
+    tier:"전략거점", rank:6,
+    summary:"총 3,225대. 충청권(충남+충북+세종 합산 7,674대) 전체 배후 거점",
+    top_price:"7천만~1억(53.1%)",
+    detail:"유성구 대덕특구는 국책연구원·IT 기업 종사자 밀집으로 기술 친화적 소비 성향. 프리미엄 수요(53.1%)가 전국 평균보다 높고 세종시 공무원·행정직 소비층과 연계 가능. 충청권 지리적 중심으로 광역 커버 효율성 높음.",
+    recommend:"유성구 봉명동 수입차 상권 진입. 대전 1개 거점으로 충청권 전체 커버 가능.",
+    cities:["유성구(대덕특구)","서구"]
+  },
+  "광주": {
+    tier:"잠재거점", rank:7,
+    summary:"총 3,225대. 전라권(전남+전북 합산 6,341대) 배후 수요 흡수 가능",
+    top_price:"7천만~1억(54.0%)",
+    detail:"수완·첨단지구 신도시 중산층 성장 중. 광주 자동차 산업(현대·기아) 클러스터 종사자의 수입차 대체 수요 존재. 전남·전북 거점 역할로 전라권 통합 커버 가능.",
+    recommend:"수완·첨단지구 복합쇼핑몰 체험 매장. 전라권 3단계 확장 시 우선 검토.",
+    cities:["서구(수완지구)","북구(첨단지구)"]
+  },
+  "충남": {
+    tier:"잠재거점", rank:8,
+    summary:"총 3,688대. 충청권 내 최대 수입차 시장. 천안·아산 산업단지 배후 수요",
+    top_price:"7천만~1억(52.3%)",
+    detail:"천안·아산은 삼성·현대·LG 대기업 공장 밀집으로 기술직 고소득층 형성. 천안 불당지구는 수도권 접근성과 산업단지 수요가 결합된 신흥 수입차 시장. 대전 거점 활용 또는 독자 거점 검토 가능.",
+    recommend:"천안 불당동 자동차 상권 진입. 대전 거점에서 천안 수요 흡수 전략도 유효.",
+    cities:["천안(불당지구)","아산"]
+  },
+  "경북": {
+    tier:"잠재거점", rank:9,
+    summary:"총 3,623대. 포항·구미·경주 산업단지 기반. 대구 거점으로 배후 흡수 가능",
+    top_price:"7천만~1억(56.7%)",
+    detail:"포항 철강, 구미 전자 산업단지 기반 고소득 기술직 소비층 보유. 7천만~1억 집중도(56.7%)가 높고 1.5억+ 고가 비중(13%)도 존재. 대구에서 1시간 내 접근 가능해 별도 거점 없이 흡수 가능.",
+    recommend:"대구 거점으로 흡수. 포항·구미 규모 성장 시 팝업 거점 추가 검토.",
+    cities:["포항","구미","경주"]
+  },
+  "전남": {
+    tier:"잠재거점", rank:10,
+    summary:"총 3,169대. 여수·순천 석유화학·제철 기반 구매력. 광주 거점으로 커버 가능",
+    top_price:"7천만~1억(55.1%)",
+    detail:"여수 석유화학·순천 광양제철소 인근 고소득 기술직 소비층. 1.5억+ 고가 비중(15.1%)도 상당해 구매력 보유. 광주에서 1시간 내 거리로 별도 거점 없이 효율적 커버 가능.",
+    recommend:"광주 거점으로 흡수. 여수·순천 규모 시 딜러십 네트워크 활용.",
+    cities:["여수","순천","목포"]
+  },
+  "전북": {
+    tier:"잠재거점", rank:11,
+    summary:"총 3,172대. 전주 집중(70% 이상). 7천만~1억 수요 탄탄",
+    top_price:"7천만~1억(55.5%)",
+    detail:"전주시(완산구·덕진구)가 전북 시장 대부분 점유. 전북대·원광대 인근 의료·교육 종사자 소비층. 새만금 개발 기업 유입으로 구매력 성장 중. 광주 거점으로 전북 수요 흡수 가능.",
+    recommend:"광주 거점 활용. 전주 에코시티 복합몰 팝업으로 인지도 구축.",
+    cities:["전주(완산구)","익산"]
+  },
+  "제주": {
+    tier:"특수시장", rank:12,
+    summary:"총 3,425대. 인구 대비 수입차 밀도 전국 최상위. 전기차 인프라 전국 최고",
+    top_price:"7천만~1억(56.5%)",
+    detail:"관광업·숙박업 자영업자와 이주민 중심의 독특한 소비 구조. 전기차 충전 인프라가 전국에서 가장 잘 갖춰진 EV 친화 시장. 렌터카 수요와 연계 시 초기 물량 확보에 유리. 도서 지역 특성상 물류비 별도 고려 필요.",
+    recommend:"렌터카 법인 계약 병행으로 초기 물량 확보. EV 브랜드로 포지셔닝 시 최적 시범 시장.",
+    cities:["제주시","서귀포"]
+  },
+  "울산": {
+    tier:"특수시장", rank:13,
+    summary:"총 1,770대. 7천만~1억 집중도 60.2%로 전국 최고. 고소득 제조업 특화 시장",
+    top_price:"7천만~1억(60.2%)",
+    detail:"현대차·HD현대 등 대기업 기반 고소득 기술직 두터운 소비층. 구매력은 높으나 브랜드 보수성 강해 신규 진입 장벽 존재. 현대·기아차 종사자의 수입차 전환 수요 공략 시 기회. 부산에서 40분 거리로 부산 거점으로 커버 가능.",
+    recommend:"부산 거점으로 흡수 가능. 현대·기아 종사자 기술 스펙 어필 마케팅 유효.",
+    cities:["남구(삼산동)","중구"]
+  },
+  "강원": {
+    tier:"잠재거점", rank:14,
+    summary:"총 2,711대. 춘천·원주 집중. 수도권 접근성으로 경기 거점 활용 가능",
+    top_price:"7천만~1억(55.5%)",
+    detail:"원주 혁신도시는 공공기관 이전으로 안정적 소비층 형성. 강릉은 관광 기반 고소득 자영업자 수요. 수도권 고속도로로 경기 거점에서 온라인 판매 대응 가능한 수준.",
+    recommend:"경기 거점에서 온라인·배송 판매로 대응. 춘천·원주 딜러십 네트워크 중장기 검토.",
+    cities:["춘천","원주","강릉"]
+  },
+  "충북": {
+    tier:"잠재거점", rank:15,
+    summary:"총 2,947대. 청주 집중. 대전 거점으로 흡수 가능",
+    top_price:"7천만~1억(52.6%)",
+    detail:"청주(상당·서원·흥덕·청원구)가 충북 시장 대부분 점유. 오송·오창 바이오·IT 산업단지 조성으로 고소득 기술직 유입 중. 대전에서 40분 거리로 대전 거점에서 커버 가능.",
+    recommend:"대전 거점으로 흡수. 청주 오창·오송 산단 성장에 따라 단독 거점 검토 가능.",
+    cities:["청주(흥덕구)","충주"]
+  },
+  "세종": {
+    tier:"잠재거점", rank:16,
+    summary:"총 1,039대. 소규모이나 30~40대 집중 성장 시장. 대전 거점 연계 가능",
+    top_price:"7천만~1억(56.8%)",
+    detail:"행정중심복합도시로 공무원·연구원 등 안정적 고소득층. 30~40대 인구 비중 높고 신규 브랜드 수용도 높음. 스타필드 세종 등 복합몰 개발로 소비 인프라 성장 중.",
+    recommend:"대전 거점과 연계. 스타필드 세종 팝업으로 인지도 구축 후 전환.",
+    cities:["세종 BRT 연선"]
+  },
+
+  // ── 서울 구별 ──
+  "서울_강남구": {
+    tier:"핵심거점", rank:1, sido:"서울",
+    summary:"서울 수입차 최대 집적지. 프리미엄 딜러십 밀집, 브랜드 인지도 구축 최적",
+    top_price:"7천만~1억(55%) · 1~1.5억(17%)",
+    detail:"청담·도곡동은 고급 수입차 딜러십 최다 밀집 거리로 소비자 유입 자체가 많음. 고소득 전문직(의료·법조·금융)과 기업인 집중. 브랜드 론칭 효과와 미디어 노출이 전국 최고. 단 경쟁 밀도도 최고라 독자 차별화 필수.",
+    recommend:"테슬라식 독립 체험 쇼룸. 청담 가로수길 또는 도산공원 인근 플래그십 스토어 1순위.",
+    cities:["청담동","도곡동"]
+  },
+  "서울_서초구": {
+    tier:"핵심거점", rank:2, sido:"서울",
+    summary:"양재 자동차 클러스터 소재지. 수입차 구매·정비 문화 정착, 강남 대비 경쟁 낮음",
+    top_price:"7천만~1억(54%) · 1~1.5억(18%)",
+    detail:"양재동 오토갤러리 클러스터로 수입차 구매 문화 이미 형성. 반포·잠원 고소득 주거지와 강남 도심 직주근접 소비층. AS센터 설립 시 기존 인프라 활용 용이. 강남구보다 경쟁 밀도 낮으면서 유사한 구매력.",
+    recommend:"양재 오토갤러리 내 입점 또는 인근 독립 쇼룸. 강남구와 투 거점 전략 효과적.",
+    cities:["양재동","반포동"]
+  },
+  "서울_송파구": {
+    tier:"전략거점", rank:3, sido:"서울",
+    summary:"잠실 상권·문정 법조타운 결합. 30~40대 가족 SUV 수요 서울 최강",
+    top_price:"7천만~1억(53%) · 1~1.5억(16%)",
+    detail:"잠실롯데월드타워 상권은 유동인구와 소비력 결합 최적지. 문정 법조타운 전문직 소비층과 30~40대 가족 단위 대형 SUV 수요 강함. 강남3구 중 상대적으로 젊은 연령대 집중.",
+    recommend:"롯데월드몰 또는 가든파이브 내 체험 전시. 팝업으로 시작해 상설 전환 전략.",
+    cities:["잠실","문정동"]
+  },
+  "서울_영등포구": {
+    tier:"전략거점", rank:4, sido:"서울",
+    summary:"여의도 금융가 + 목동 교육특구 이중 수요. 서울 서남권 허브",
+    top_price:"7천만~1억(52%) · 5~7천만(12%)",
+    detail:"여의도 금융가 직장인(증권·은행·보험)은 합리적 중가 수입차 선호. 목동 교육특구 40대 중산층 가족 SUV 수요 안정적. 강서·구로·마포 서울 서남권 전체 배후 수요 흡수 가능한 지리적 요충지.",
+    recommend:"여의도 IFC몰 또는 목동 행복한세상 인근 쇼룸. 법인 리스 계약 적극 활용.",
+    cities:["여의도","목동"]
+  },
+  "서울_강서구": {
+    tier:"성장거점", rank:5, sido:"서울",
+    summary:"마곡 산업단지 신흥 수입차 시장. 임대료 낮고 성장 잠재력 최고",
+    top_price:"7천만~1억(51%) · 5~7천만(14%)",
+    detail:"마곡 LG사이언스파크·마곡산업단지 조성으로 IT·바이오 기업 종사자 급증 중. 2020년 이후 수입차 수요 가파른 성장세. 강남권 대비 임대료 낮아 거점 운영 비용 효율적. 김포공항 인근 항공·물류 종사자 고소득층 추가 수요.",
+    recommend:"마곡 스타필드 또는 발산역 상권 진입. 성장 잠재력 높아 중장기 투자 가치 높음.",
+    cities:["마곡","발산"]
+  },
+  "서울_마포구": {
+    tier:"체험거점", rank:6, sido:"서울",
+    summary:"MZ세대 트렌드 선도 지역. 판매보다 브랜드 인지도·SNS 바이럴 효과 극대화",
+    top_price:"7천만~1억(52%) · 5~7천만(13%)",
+    detail:"홍대·합정·상암의 20~30대 MZ세대와 DMC IT·미디어 종사자 혼재. 구매력보다 트렌드 선도 성향 강해 SNS 바이럴 마케팅 극대화 가능. 팝업 스토어 문화 발달로 체험 공간 수용도 높음.",
+    recommend:"홍대 걷고 싶은 거리 팝업 또는 상암 DMC 미디어센터 콜라보. 브랜드 첫 인상 구축 최적.",
+    cities:["홍대","상암(DMC)"]
+  },
+  "서울_용산구": {
+    tier:"특수거점", rank:7, sido:"서울",
+    summary:"한남동 고급 빌라촌 + 외국인 거주자 집중. 해외 브랜드 친숙도 서울 최고",
+    top_price:"7천만~1억(55%) · 1~1.5억(17%)",
+    detail:"한남동은 서울 최고가 주거지로 해외 브랜드에 대한 친숙도와 수용도 최고 수준. 이태원·경리단길 글로벌 라이프스타일 소비층 집결. 외국 브랜드의 코리아 런칭 이벤트에 최적화된 상권.",
+    recommend:"한남 갤러리아 포레 인근 럭셔리 쇼룸 또는 이태원 프리미엄 팝업. 글로벌 이미지 강조.",
+    cities:["한남동","이태원"]
+  },
+  "서울_성동구": {
+    tier:"체험거점", rank:8, sido:"서울",
+    summary:"성수 팝업 성지. 트렌디한 자동차 체험 공간 최적지. 미래 성장성 높음",
+    top_price:"7천만~1억(53%) · 5~7천만(13%)",
+    detail:"성수동은 팝업 스토어·체험 공간의 메카로 MZ세대와 트렌드 선도층 집결. 뚝섬·서울숲 상권은 자동차 체험 공간 수용도 높음. 왕십리 직장인 및 젊은 전문직 수요 보유. 성수 젠트리피케이션으로 고소득층 유입 증가 중.",
+    recommend:"성수 팝업 문화 활용. '자동차+라이프스타일' 복합 체험 공간으로 MZ 공략 최적.",
+    cities:["성수동","왕십리"]
+  }
+};
+
+
+// ── 줌/패닝 상태 ──────────────────────────────────
+var _z = {scale:1, tx:0, ty:0, drag:false, sx:0, sy:0, stx:0, sty:0};
+
+function applyZoom(){
+  var g = document.getElementById('svgNat').querySelector('g.zg');
+  if(!g) return;
+  g.setAttribute('transform','translate('+_z.tx+','+_z.ty+') scale('+_z.scale+')');
+}
+function doZoom(factor){
+  var svg = document.getElementById('svgNat');
+  var vb = svg.viewBox.baseVal;
+  var cx = vb.width/2, cy = vb.height/2;
+  var ns = Math.max(0.5, Math.min(10, _z.scale*factor));
+  _z.tx = cx - (cx - _z.tx)*(ns/_z.scale);
+  _z.ty = cy - (cy - _z.ty)*(ns/_z.scale);
+  _z.scale = ns;
+  applyZoom();
+}
+function resetZoom(){
+  _z.scale=1; _z.tx=0; _z.ty=0;
+  applyZoom();
+}
+function initZoomEvents(){
+  var svg = document.getElementById('svgNat');
+  var pane = document.getElementById('pane-national');
+
+  // 휠 줌
+  pane.addEventListener('wheel', function(e){
+    if(document.getElementById('slide-nat').classList.contains('drilled')) return;
+    e.preventDefault();
+    var rect = svg.getBoundingClientRect();
+    var vb = svg.viewBox.baseVal;
+    var scaleX = vb.width / rect.width;
+    var scaleY = vb.height / rect.height;
+    var mx = (e.clientX - rect.left) * scaleX;
+    var my = (e.clientY - rect.top) * scaleY;
+    var factor = e.deltaY < 0 ? 1.15 : 0.87;
+    var ns = Math.max(0.5, Math.min(10, _z.scale*factor));
+    _z.tx = mx - (mx - _z.tx)*(ns/_z.scale);
+    _z.ty = my - (my - _z.ty)*(ns/_z.scale);
+    _z.scale = ns;
+    applyZoom();
+  }, {passive:false});
+
+  // 드래그 패닝
+  svg.addEventListener('mousedown', function(e){
+    if(document.getElementById('slide-nat').classList.contains('drilled')) return;
+    _z.drag=true; _z.sx=e.clientX; _z.sy=e.clientY; _z.stx=_z.tx; _z.sty=_z.ty;
+    svg.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!_z.drag) return;
+    var rect = document.getElementById('svgNat').getBoundingClientRect();
+    var vb = document.getElementById('svgNat').viewBox.baseVal;
+    var scaleX = vb.width / rect.width;
+    var scaleY = vb.height / rect.height;
+    _z.tx = _z.stx + (e.clientX - _z.sx)*scaleX;
+    _z.ty = _z.sty + (e.clientY - _z.sy)*scaleY;
+    applyZoom();
+  });
+  window.addEventListener('mouseup', function(){
+    if(_z.drag){ _z.drag=false; document.getElementById('svgNat').style.cursor=''; }
+  });
+}
+var S={};
+var BYD={"경남":334,"경기":1837,"경북":172,"강원":134,"광주":143,"대구":338,"대전":184,"부산":950,"서울_강남구":31,"서울_강동구":19,"서울_강북구":8,"서울_강서구":34,"서울_관악구":17,"서울_광진구":6,"서울_구로구":25,"서울_금천구":18,"서울_노원구":12,"서울_도봉구":14,"서울_동대문구":14,"서울_동작구":10,"서울_마포구":19,"서울_서대문구":15,"서울_서초구":66,"서울_성동구":9,"서울_성북구":20,"서울_송파구":36,"서울_양천구":36,"서울_영등포구":28,"서울_용산구":19,"서울_은평구":12,"서울_종로구":4,"서울_중구":2,"서울_중랑구":13,"세종":62,"울산":57,"인천":502,"전남":157,"전북":145,"제주":234,"충남":232,"충북":136};
+var SIDO_BBOX={"제주":{"cx":126.56725,"cy":33.3773,"minLon":126.1613,"maxLon":126.9732,"minLat":33.1907,"maxLat":33.5639},"경남":{"cx":128.40085,"cy":35.2639,"minLon":127.5796,"maxLon":129.2221,"minLat":34.6162,"maxLat":35.9116},"경북":{"cx":129.36045000000001,"cy":36.5547,"minLon":127.7998,"maxLon":130.9211,"minLat":35.5631,"maxLat":37.5463},"전남":{"cx":126.4547,"cy":34.7244,"minLon":125.0964,"maxLon":127.813,"minLat":33.9655,"maxLat":35.4833},"전북":{"cx":127.08064999999999,"cy":35.725,"minLon":126.2505,"maxLon":127.9108,"minLat":35.2965,"maxLat":36.1535},"충남":{"cx":126.8717,"cy":36.518699999999995,"minLon":126.1035,"maxLon":127.6399,"minLat":35.975,"maxLat":37.0624},"충북":{"cx":127.96790000000001,"cy":36.6333,"minLon":127.2813,"maxLon":128.6545,"minLat":36.0113,"maxLat":37.2553},"강원":{"cx":128.2389,"cy":37.818299999999994,"minLon":127.1114,"maxLon":129.3664,"minLat":37.0256,"maxLat":38.611},"경기":{"cx":127.1841,"cy":37.5901,"minLon":126.5166,"maxLon":127.8516,"minLat":36.8909,"maxLat":38.2893},"세종":{"cx":127.2736,"cy":36.568,"minLon":127.1362,"maxLon":127.411,"minLat":36.4053,"maxLat":36.7307},"울산":{"cx":129.2203,"cy":35.52405,"minLon":128.9732,"maxLon":129.4674,"minLat":35.3264,"maxLat":35.7217},"대전":{"cx":127.40445,"cy":36.34165,"minLon":127.2516,"maxLon":127.5573,"minLat":36.1862,"maxLat":36.4971},"광주":{"cx":126.83825,"cy":35.152649999999994,"minLon":126.6536,"maxLon":127.0229,"minLat":35.0494,"maxLat":35.2559},"인천":{"cx":125.70455,"cy":37.53104999999999,"minLon":124.6133,"maxLon":126.7958,"minLat":37.0806,"maxLat":37.9815},"대구":{"cx":128.55935,"cy":35.8077,"minLon":128.3533,"maxLon":128.7654,"minLat":35.6037,"maxLat":36.0117},"부산":{"cx":129.05155000000002,"cy":35.1973,"minLon":128.7963,"maxLon":129.3068,"minLat":35.0098,"maxLat":35.3848},"서울":{"cx":126.97695,"cy":37.562,"minLon":126.7698,"maxLon":127.1841,"minLat":37.4257,"maxLat":37.6983}};
+var SIDO_GEO=null, SGG_GEO=null, SEOUL_GEO=null;
+var geoCount=0, dataReady=false, curDrill=null;
+
+var PR=['30000이하','30000-40000','40000-50000','50000-70000','70000-100000','100000-150000','150000이상'];
+var PL={'30000이하':'~3천만','30000-40000':'3~4천만','40000-50000':'4~5천만','50000-70000':'5~7천만','70000-100000':'7천~1억','100000-150000':'1~1.5억','150000이상':'1.5억+'};
+var TG=['40000-50000','50000-70000','70000-100000'];
+var PC={
+  'all':['#f0f4ff','#c7d7fe','#93b4fd','#60a5fa','#2563eb','#1e40af','#1e3a8a'],
+  '30000이하':['#f0feff','#a5f3fc','#22d3ee','#0891b2','#0e7490','#155e75','#164e63'],
+  '30000-40000':['#f0fdf4','#bbf7d0','#4ade80','#16a34a','#15803d','#14532d','#052e16'],
+  '40000-50000':['#fffbeb','#fef08a','#facc15','#f59e0b','#d97706','#92400e','#78350f'],
+  '50000-70000':['#fff7ed','#fed7aa','#fb923c','#f97316','#ea580c','#c2410c','#7c2d12'],
+  '70000-100000':['#fff1f2','#fecdd3','#fb7185','#f43f5e','#e11d48','#9f1239','#4c0519'],
+  '100000-150000':['#fdf4ff','#e9d5ff','#c084fc','#a855f7','#7e22ce','#581c87','#3b0764'],
+  '150000이상':['#faf5ff','#ddd6fe','#a78bfa','#7c3aed','#5b21b6','#3b0764','#1e0042']
+};
+var CUR='all';
+
+// GeoJSON 이름 매핑
+var SIDO_MAP={'서울특별시':'서울','부산광역시':'부산','대구광역시':'대구','인천광역시':'인천','광주광역시':'광주','대전광역시':'대전','울산광역시':'울산','세종특별자치시':'세종','경기도':'경기','강원도':'강원','충청북도':'충북','충청남도':'충남','전라북도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남','제주특별자치도':'제주'};
+var CODE_SIDO={'11':'서울','21':'부산','22':'대구','23':'인천','24':'광주','25':'대전','26':'울산','29':'세종','31':'경기','32':'강원','33':'충북','34':'충남','35':'전북','36':'전남','37':'경북','38':'경남','39':'제주'};
+var GU_MAP={'강남구':'서울_강남구','강동구':'서울_강동구','강북구':'서울_강북구','강서구':'서울_강서구','관악구':'서울_관악구','광진구':'서울_광진구','구로구':'서울_구로구','금천구':'서울_금천구','노원구':'서울_노원구','도봉구':'서울_도봉구','동대문구':'서울_동대문구','동작구':'서울_동작구','마포구':'서울_마포구','서대문구':'서울_서대문구','서초구':'서울_서초구','성동구':'서울_성동구','성북구':'서울_성북구','송파구':'서울_송파구','양천구':'서울_양천구','영등포구':'서울_영등포구','용산구':'서울_용산구','은평구':'서울_은평구','종로구':'서울_종로구','중구':'서울_중구','중랑구':'서울_중랑구'};
+
+function processGeo(){
+  for(var i=0;i<SIDO_GEO.features.length;i++){var f=SIDO_GEO.features[i];f.properties.dataKey=SIDO_MAP[f.properties.name]||f.properties.name;}
+  for(var i=0;i<SGG_GEO.features.length;i++){
+    var f=SGG_GEO.features[i];
+    var code=f.properties.code||'';
+    var name=f.properties.name||'';
+    var sido=CODE_SIDO[code.slice(0,2)]||'';
+    if(!sido||( name.indexOf('군')>=0 && name.indexOf('시')<0)){f.properties.dataKey=null;continue;}
+    var spaced=name.replace(/([가-힣]+시)([가-힣]+구)/,function(m,a,b){return a+' '+b;});
+    f.properties.dataKey=sido+'_'+spaced;
+    f.properties.sidoName=sido;
+    f.properties.cityName=spaced;
+  }
+  for(var i=0;i<SEOUL_GEO.features.length;i++){
+    var f=SEOUL_GEO.features[i];
+    f.properties.dataKey=GU_MAP[f.properties.name]||('서울_'+f.properties.name);
+    f.properties.sidoName='서울';
+    f.properties.cityName=f.properties.name;
+  }
+}
+
+// GeoJSON fetch
+function fetchGeo(url,cb){
+  fetch(url).then(function(r){return r.json();}).then(cb).catch(function(e){console.error(url,e);});
+}
+fetchGeo('https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_provinces_geo_simple.json',function(d){SIDO_GEO=d;geoCount++;tryLaunch();});
+fetchGeo('https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_municipalities_geo_simple.json',function(d){SGG_GEO=d;geoCount++;tryLaunch();});
+fetchGeo('https://raw.githubusercontent.com/southkorea/seoul-maps/master/kostat/2013/json/seoul_municipalities_geo_simple.json',function(d){SEOUL_GEO=d;geoCount++;tryLaunch();});
+
+function tryLaunch(){if(geoCount>=3 && dataReady){processGeo();launch();}}
+
+// KAIDA 데이터 로드
+var PRICES=['30000이하','30000-40000','40000-50000','50000-70000','70000-100000','100000-150000','150000이상'];
+var MM={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function pm(v){var s=String(v).trim().toLowerCase().replace('.','');return MM[s]||null;}
+function pfn(fname){
+  var name=fname.replace(/\.xlsx?$/,'');
+  var priceCandidate='';
+  for(var pi=PRICES.length-1;pi>=0;pi--){if(name.endsWith('_'+PRICES[pi])){priceCandidate=PRICES[pi];break;}}
+  if(!priceCandidate)return null;
+  var parts=name.split('_');
+  var brand=parts[1];
+  var region=name.slice(('2025_'+brand+'_').length,name.length-('_'+priceCandidate).length);
+  return {brand:brand,region:region,price:priceCandidate};
+}
+
+var sc=document.createElement('script');
+sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+document.head.appendChild(sc);
+
+document.getElementById('kld').addEventListener('change',async function(e){
+  var files=[...e.target.files].filter(function(f){return f.name.startsWith('2025_')&&(f.name.endsWith('.xls')||f.name.endsWith('.xlsx'));});
+  var prog=document.getElementById('kprog');
+  prog.textContent='총 '+files.length+'개 처리 중...';
+  var raw={};var done=0;
+  for(var i=0;i<files.length;i++){
+    var fi=files[i];var info=pfn(fi.name);if(!info){done++;continue;}
+    try{
+      var buf=await fi.arrayBuffer();
+      var wb=XLSX.read(buf,{type:'array'});var ws=wb.Sheets[wb.SheetNames[0]];
+      var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      var hr=data[3];if(!hr){done++;continue;}
+      var mc=[];for(var c=0;c<hr.length;c++){var m=pm(hr[c]);if(m)mc.push({col:c});}
+      var dr=data[4];var t12=0;
+      if(dr)mc.forEach(function(x){var v=parseFloat(String(dr[x.col]).replace(/,/g,''));if(!isNaN(v))t12+=v;});
+      if(!raw[info.region])raw[info.region]={};
+      raw[info.region][info.price]=(raw[info.region][info.price]||0)+t12;
+    }catch(err){}
+    done++;
+    if(done%300===0)prog.textContent=done+'/'+files.length+' 처리 중...';
+  }
+  var st={};for(var k in raw){if(k.startsWith('서울_')){for(var p in raw[k])st[p]=(st[p]||0)+raw[k][p];}}
+  raw['서울']=st;
+  S=raw;
+  dataReady=true;
+  prog.textContent='완료! '+Object.keys(S).length+'개 지역';
+  setTimeout(function(){document.getElementById('data-ov').remove();},300);
+  tryLaunch();
+});
+
+function launch(){ra();initZoomEvents();}
+
+// ── 투영 ─────────────────────────────────────────
+var LN0=124.5,LN1=131.0,LT0=33.0,LT1=38.7,NW=440,NH=580,NP=22;
+function pN(lo,la){return [NP+(lo-LN0)/(LN1-LN0)*(NW-2*NP),NH-NP-(la-LT0)/(LT1-LT0)*(NH-2*NP)];}
+var SL0=126.764,SL1=127.190,ST0=37.423,ST1=37.702,SW=500,SH=380,SP=18;
+function pS(lo,la){return [SP+(lo-SL0)/(SL1-SL0)*(SW-2*SP),SH-SP-(la-ST0)/(ST1-ST0)*(SH-2*SP)];}
+
+function g2p(geom,pf){
+  function r2p(r){var s='';for(var i=0;i<r.length;i++){var p=pf(r[i][0],r[i][1]);s+=(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}return s+'Z';}
+  if(geom.type==='Polygon'){var s='';for(var i=0;i<geom.coordinates.length;i++)s+=r2p(geom.coordinates[i])+' ';return s;}
+  if(geom.type==='MultiPolygon'){var s='';for(var i=0;i<geom.coordinates.length;i++)for(var j=0;j<geom.coordinates[i].length;j++)s+=r2p(geom.coordinates[i][j])+' ';return s;}
+  return '';
+}
+function ctr(geom,pf){
+  var sx=0,sy=0,n=0;
+  function add(r){for(var i=0;i<r.length;i++){var p=pf(r[i][0],r[i][1]);sx+=p[0];sy+=p[1];n++;}}
+  if(geom.type==='Polygon')add(geom.coordinates[0]);
+  else if(geom.type==='MultiPolygon')for(var i=0;i<geom.coordinates.length;i++)add(geom.coordinates[i][0]);
+  return n?[sx/n,sy/n]:[0,0];
+}
+function gv(k){
+  var d=S[k];if(!d)return 0;
+  if(CUR==='all'){var t=0;for(var i=0;i<PR.length;i++)t+=d[PR[i]]||0;return t;}
+  return d[CUR]||0;
+}
+function lerp(a,b,t){
+  var ah=parseInt(a.slice(1),16),bh=parseInt(b.slice(1),16);
+  return 'rgb('+Math.round(((ah>>16)&255)+(((bh>>16)&255)-((ah>>16)&255))*t)+','+Math.round(((ah>>8)&255)+(((bh>>8)&255)-((ah>>8)&255))*t)+','+Math.round((ah&255)+((bh&255)-(ah&255))*t)+')';
+}
+function hc(ratio,lo){
+  var s=PC[CUR]||PC['all'];
+  if(ratio<0.001)return lo?s[1]:s[0];
+  var t=Math.pow(ratio,0.4)*(s.length-1);
+  var i=Math.min(Math.floor(t),s.length-2);
+  return lerp(s[i],s[i+1],t-i);
+}
+var NS='http://www.w3.org/2000/svg';
+function mel(tag,attrs){var el=document.createElementNS(NS,tag);for(var k in attrs)el.setAttribute(k,attrs[k]);return el;}
+
+function mkPin(svg,x,y,lbl,rk){
+  var col=rk===1?'#ef4444':rk===2?'#f97316':'#3b82f6';var r=9;
+  svg.appendChild(mel('ellipse',{cx:x+1,cy:y+r+8,rx:5,ry:2,fill:'rgba(0,0,0,0.12)'}));
+  svg.appendChild(mel('polygon',{points:x+','+(y+r+7)+' '+(x-4)+','+(y+r-1)+' '+(x+4)+','+(y+r-1),fill:col}));
+  svg.appendChild(mel('circle',{cx:x,cy:y,r:r,fill:col,stroke:'#fff','stroke-width':'2'}));
+  svg.appendChild(mel('polygon',{points:x+','+(y-r+2)+' '+(x-5)+','+(y-1)+' '+(x+5)+','+(y-1),fill:'#fff','opacity':'0.95'}));
+  svg.appendChild(mel('rect',{x:x-3.5,y:y-1,width:7,height:5,fill:'#fff','opacity':'0.95'}));
+  var tw=lbl.length*5.8+10;
+  svg.appendChild(mel('rect',{x:x-tw/2,y:y-r-16,width:tw,height:13,rx:3,fill:'#fff',stroke:col,'stroke-width':'1'}));
+  var lt=mel('text',{x:x,y:y-r-6,'text-anchor':'middle','font-size':'8.5','font-weight':'700',fill:col,'font-family':'Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif'});
+  lt.textContent=lbl;svg.appendChild(lt);
+}
+var MN=[{lo:127.12,la:37.38,lbl:'경기(성남)',rk:1},{lo:126.68,la:37.45,lbl:'인천(송도)',rk:1},{lo:129.07,la:35.18,lbl:'부산',rk:1},{lo:128.60,la:35.87,lbl:'대구',rk:2},{lo:127.38,la:36.36,lbl:'대전',rk:2}];
+var MS=[{lo:127.047,la:37.517,lbl:'강남구',rk:1},{lo:127.010,la:37.484,lbl:'서초구',rk:1},{lo:127.108,la:37.514,lbl:'송파구',rk:2},{lo:126.896,la:37.526,lbl:'영등포',rk:2},{lo:126.926,la:37.556,lbl:'마포구',rk:3}];
+
+// ── 전국 지도 ────────────────────────────────────
+function drawNational(){
+  var svg=document.getElementById('svgNat');svg.innerHTML='';
+  var NS2='http://www.w3.org/2000/svg';
+  var zg=document.createElementNS(NS2,'g');
+  zg.setAttribute('class','zg');
+  // 현재 줌 상태 유지
+  zg.setAttribute('transform','translate('+_z.tx+','+_z.ty+') scale('+_z.scale+')');
+  var feats=SIDO_GEO.features;
+  var vals=feats.map(function(f){return gv(f.properties.dataKey);});
+  var maxV=Math.max.apply(null,vals.concat([1]));
+  for(var i=0;i<feats.length;i++){
+    var f=feats[i];var key=f.properties.dataKey;var ratio=vals[i]/maxV;
+    var d=g2p(f.geometry,pN);if(!d)continue;
+    var path=mel('path',{d:d,fill:hc(ratio),'class':'reg','stroke':'#e2e5ed','stroke-width':'0.8'});
+    (function(k){
+      path.addEventListener('mouseenter',function(e){showTip(e,k);});
+      path.addEventListener('mousemove',movTip);path.addEventListener('mouseleave',hidTip);
+      path.addEventListener('click',function(){hidTip();drillDown(k);});
+    })(key);
+    zg.appendChild(path);
+    var ct=ctr(f.geometry,pN);
+    var nm=f.properties.name.replace(/특별시|광역시|특별자치시|특별자치도/g,'').replace(/^경상/,'경').replace(/^전라/,'전').replace(/^충청/,'충').replace(/도$/,'').replace(/시$/,'시');
+    var sz=nm.length>3?8:10;var dark=ratio>0.32;
+    var tx=mel('text',{x:ct[0],y:ct[1]+sz*0.38,'text-anchor':'middle','font-size':sz,fill:dark?'rgba(255,255,255,0.95)':'rgba(40,50,80,0.85)','font-weight':dark?'700':'500','pointer-events':'none','font-family':'Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif'});
+    tx.textContent=nm;zg.appendChild(tx);
+  }
+  MN.forEach(function(m){var pos=pN(m.lo,m.la);mkPin(zg,pos[0],pos[1],m.lbl,m.rk);});
+  svg.appendChild(zg);
+  updateLeg(maxV);
+}
+
+// ── 드릴다운 ─────────────────────────────────────
+function drillDown(sidoKey){
+  var bb=SIDO_BBOX[sidoKey];
+  // 서울은 SEOUL_GEO 구단위, 나머지는 SGG_GEO 시단위
+  var subFeats;
+  if(sidoKey==='서울'){
+    subFeats=SEOUL_GEO.features;
+  } else {
+    subFeats=SGG_GEO.features.filter(function(f){return f.properties.dataKey && f.properties.sidoName===sidoKey;});
+  }
+  if(!subFeats || subFeats.length===0){ selReg(sidoKey); return; }
+  curDrill=sidoKey;
+
+  // 해당 도의 bounding box로 custom 투영
+  if(!bb){ selReg(sidoKey); return; }
+  var lon0=bb.minLon-0.08,lon1=bb.maxLon+0.08,lat0=bb.minLat-0.08,lat1=bb.maxLat+0.08;
+  var W=480,H=500,PAD=28;
+  var scX=(W-2*PAD)/(lon1-lon0), scY=(H-2*PAD)/(lat1-lat0);
+  var sc=Math.min(scX,scY);
+  var offX=PAD+(W-2*PAD-(lon1-lon0)*sc)/2;
+  var offY=PAD+(H-2*PAD-(lat1-lat0)*sc)/2;
+  function pDrill(lo,la){return [offX+(lo-lon0)*sc, H-offY-(la-lat0)*sc];}
+
+  var drillSvg=document.getElementById('svgDrill');
+  drillSvg.setAttribute('viewBox','0 0 '+W+' '+H);
+  drillSvg.innerHTML='';
+
+  var vals=subFeats.map(function(f){return gv(f.properties.dataKey);});
+  var maxV=Math.max.apply(null,vals.concat([1]));
+
+  for(var i=0;i<subFeats.length;i++){
+    var f=subFeats[i];var key=f.properties.dataKey;var ratio=vals[i]/maxV;
+    var d=g2p(f.geometry,pDrill);if(!d)continue;
+    var path=mel('path',{d:d,fill:hc(ratio,true),'class':'reg','stroke':'#fff','stroke-width':'1'});
+    (function(k){
+      path.addEventListener('mouseenter',function(e){showTip(e,k);});
+      path.addEventListener('mousemove',movTip);path.addEventListener('mouseleave',hidTip);
+      path.addEventListener('click',function(){selReg(k);});
+    })(key);
+    drillSvg.appendChild(path);
+    var ct=ctr(f.geometry,pDrill);
+    var nm=f.properties.cityName||'';
+    nm=nm.replace(/시$/,'시').replace(/구$/,'구');
+    var sz=sidoKey==='서울'?8.5:9;var dark=ratio>0.3;
+    var tx=mel('text',{x:ct[0],y:ct[1]+sz*0.38,'text-anchor':'middle','font-size':sz,fill:dark?'rgba(255,255,255,0.95)':'rgba(40,50,80,0.82)','font-weight':dark?'700':'400','pointer-events':'none','font-family':'Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif'});
+    tx.textContent=nm;drillSvg.appendChild(tx);
+  }
+
+  // 슬라이드 애니메이션
+  document.getElementById('slide-nat').classList.add('drilled');
+  document.getElementById('zoom-btns').style.display='none';
+  document.getElementById('back-btn').classList.add('show');
+  var bc=document.getElementById('breadcrumb');
+  bc.textContent='전국 > '+sidoKey;bc.classList.add('show');
+  var hp=document.getElementById('hint-pill');hp.style.opacity='0';
+
+  // 분석 패널 업데이트
+  var ranked=[];
+  for(var i=0;i<subFeats.length;i++) ranked.push({key:subFeats[i].properties.dataKey,val:vals[i],name:subFeats[i].properties.cityName||''});
+  ranked.sort(function(a,b){return b.val-a.val;});
+  var html='<div class="ap-desc" style="margin-bottom:8px;"><strong>'+sidoKey+'</strong> 내 시별 판매량 (진한 색 = 판매 많음)</div><div class="sec-hd">&#127942; 판매량 TOP</div>';
+  var clz=['r1','r2','r3','r2','r3'];
+  var cnum=['&#9312;','&#9313;','&#9314;','&#9315;','&#9316;'];
+  for(var i=0;i<Math.min(5,ranked.length);i++){
+    var r=ranked[i];if(r.val===0)continue;
+    var d2=S[r.key]||{};var tot=0;for(var pi=0;pi<PR.length;pi++)tot+=d2[PR[pi]]||0;
+    var tgt=0;for(var pi=0;pi<TG.length;pi++)tgt+=d2[TG[pi]]||0;
+    html+='<div class="aitem '+clz[i]+'"><div class="atit">'+cnum[i]+' '+r.name+'</div><div class="astat">전체 '+tot.toLocaleString()+'대 | 타겟 '+tgt.toLocaleString()+'대</div></div>';
+  }
+  document.getElementById('ap-title').textContent=sidoKey+' 시별 분석';
+  document.getElementById('ap-body').innerHTML=html;
+  selReg(sidoKey);
+}
+
+function drillUp(){
+  curDrill=null;
+  document.getElementById('slide-nat').classList.remove('drilled');
+  document.getElementById('zoom-btns').style.display='flex';
+  document.getElementById('back-btn').classList.remove('show');
+  document.getElementById('breadcrumb').classList.remove('show');
+  document.getElementById('hint-pill').style.opacity='1';
+  document.getElementById('ap-title').textContent='전국 수입차 시장 분석';
+  document.getElementById('ap-body').innerHTML='<div class="ap-desc" style="margin-bottom:8px;">지도의 <strong>도/광역시를 클릭</strong>하면 시별 상세 지도와 분석이 표시됩니다.</div><div class="sec-hd">&#127942; 핵심 거점 — 즉시 진출</div><div class="aitem r1"><div class="atit">&#9312; 경기 (성남·수원·고양)</div><div class="astat">전국 최대 32,886대 | 7천만~1억 51.8%</div><div class="adesc">판교·분당 IT 얼리어답터. 신규 브랜드 수용도 전국 최고.</div></div><div class="aitem r1"><div class="atit">&#9313; 인천 (송도·청라)</div><div class="astat">26,491대 | 고가 21.2%</div><div class="adesc">송도 글로벌 소비층. 공항·항만 물류 거점.</div></div><div class="aitem r1"><div class="atit">&#9314; 부산 (해운대·서면)</div><div class="astat">31,883대 | 초고가 25.8% 전국 최고</div><div class="adesc">수도권 외 최대. 경남 전체 배후 시장.</div></div><div class="sec-hd" style="margin-top:10px;">&#128205; 전략 거점 — 단계적 확장</div><div class="aitem r2"><div class="atit">&#9315; 대구 (수성구)</div><div class="astat">9,497대 | 영남 내륙 허브</div></div><div class="aitem r2"><div class="atit">&#9316; 대전 (유성·대덕특구)</div><div class="astat">충청권 합산 7,674대</div></div><div class="hint"><strong>시장 특성:</strong> 전 지역 공통으로 <strong>7천만~1억 구간이 45~60%</strong> 지배. 수도권이 전국의 52% 집중.</div>';
+}
+
+// ── 서울 지도 ────────────────────────────────────
+function drawSeoul(){
+  var svg=document.getElementById('svgSeoul');svg.innerHTML='';
+  var feats=SEOUL_GEO.features;
+  var vals=feats.map(function(f){return gv(f.properties.dataKey);});
+  var maxV=Math.max.apply(null,vals.concat([1]));
+  for(var i=0;i<feats.length;i++){
+    var f=feats[i];var key=f.properties.dataKey;var ratio=vals[i]/maxV;
+    var d=g2p(f.geometry,pS);if(!d)continue;
+    var path=mel('path',{d:d,fill:hc(ratio),'class':'reg'});
+    (function(k){path.addEventListener('mouseenter',function(e){showTip(e,k);});path.addEventListener('mousemove',movTip);path.addEventListener('mouseleave',hidTip);path.addEventListener('click',function(){selReg(k);});})(key);
+    svg.appendChild(path);
+    var ct=ctr(f.geometry,pS);
+    var nm=f.properties.name;var sz=8;var dark=ratio>0.32;
+    var tx=mel('text',{x:ct[0],y:ct[1]+sz*0.38,'text-anchor':'middle','font-size':sz,fill:dark?'rgba(255,255,255,0.95)':'rgba(40,50,80,0.82)','font-weight':dark?'700':'400','pointer-events':'none','font-family':'Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif'});
+    tx.textContent=nm;svg.appendChild(tx);
+  }
+  MS.forEach(function(m){var pos=pS(m.lo,m.la);mkPin(svg,pos[0],pos[1],m.lbl,m.rk);});
+  updateLeg(maxV);
+}
+
+function updateLeg(maxV){
+  var s=PC[CUR]||PC['all'];
+  document.getElementById('legbar').style.background='linear-gradient(to right,'+s.join(',')+')';
+  document.getElementById('legmax').textContent=maxV.toLocaleString()+'대';
+}
+
+function ra(){
+  drawNational();
+  if(document.getElementById('panel-seoul').classList.contains('on'))drawSeoul();
+  if(curDrill)drillDown(curDrill);
+}
+
+function showTip(e,key){
+  var d=S[key];if(!d)return;
+  var tot=0;for(var i=0;i<PR.length;i++)tot+=d[PR[i]]||0;
+  var nm=key.replace('서울_','');var rows='';
+  for(var i=0;i<PR.length;i++){var v=d[PR[i]]||0;if(v>0){var isT=TG.indexOf(PR[i])>=0;rows+='<div class="tr"><span>'+PL[PR[i]]+(isT?' &#9733;':'')+'</span><b>'+v.toLocaleString()+'</b></div>';}}
+  document.getElementById('tip').innerHTML='<div class="tn">'+nm+'</div>'+rows+'<div class="tt"><span>합계</span><span>'+tot.toLocaleString()+'대</span></div>';
+  document.getElementById('tip').style.display='block';movTip(e);
+}
+function movTip(e){var t=document.getElementById('tip');var x=e.clientX+12,y=e.clientY-8;if(x+200>window.innerWidth)x=e.clientX-205;if(y+t.offsetHeight>window.innerHeight)y=e.clientY-t.offsetHeight-8;t.style.left=x+'px';t.style.top=y+'px';}
+function hidTip(){document.getElementById('tip').style.display='none';}
+function selReg(key){
+  var d=S[key];if(!d)return;
+  var tot=0;for(var i=0;i<PR.length;i++)tot+=d[PR[i]]||0;
+  var nm=key.replace('서울_','');var rows='';
+  for(var i=0;i<PR.length;i++){var v=d[PR[i]]||0;if(!v)continue;var pct=Math.round(v/tot*100);var isT=TG.indexOf(PR[i])>=0;rows+='<div class="irow"><span style="color:'+(isT?'#f97316':'#6b7280')+'">'+PL[PR[i]]+(isT?' &#9733;':'')+'</span><span class="v">'+v.toLocaleString()+' <span style="color:#9ca3af;font-weight:400">('+pct+'%)</span></span></div>';}
+  document.getElementById('ibox').innerHTML='<div class="iname">'+nm+'</div>'+rows+'<div class="itot"><span>합계</span><span>'+tot.toLocaleString()+'대</span></div>';
+}
+function setP(btn){var b=document.querySelectorAll('.pbtn');for(var i=0;i<b.length;i++)b[i].classList.remove('on');btn.classList.add('on');CUR=btn.dataset.p;if(SIDO_GEO)ra();}
+function sw(btn,id){
+  var t=document.querySelectorAll('.tab');for(var i=0;i<t.length;i++)t[i].classList.remove('on');btn.classList.add('on');
+  var p=document.querySelectorAll('.panel');for(var i=0;i<p.length;i++)p[i].classList.remove('on');
+  document.getElementById('panel-'+id).classList.add('on');
+  if(id==='seoul'&&SEOUL_GEO)drawSeoul();
+}
+</script>
+</body>
+</html>
