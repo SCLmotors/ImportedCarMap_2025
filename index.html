@@ -68,6 +68,42 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f4
 .adesc{font-size:16px;color:#6b7280;line-height:1.55;}
 .hint{background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 9px;font-size:16px;color:#7c2d12;line-height:1.6;}
 path.reg{cursor:pointer;stroke:#fff;stroke-width:0.7;}
+/* ===== 모바일 반응형 (≤768px) ===== */
+@media (max-width:768px){
+  body{height:auto;overflow-y:auto;}
+  .hdr{flex-wrap:wrap;padding:9px 12px;gap:6px;}
+  .hdr h1{font-size:15px;width:100%;}
+  .sub{font-size:11px;margin-left:0;width:100%;order:5;}
+  .b1,.b2{font-size:11px;padding:2px 7px;}
+  .layout{flex-direction:column;height:auto;overflow:visible;}
+  .side{width:100%;min-width:0;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #e2e5ed;padding:8px;gap:8px;overflow-y:visible;align-items:flex-start;}
+  .side>div{flex:1 1 auto;min-width:130px;}
+  .side>div:first-child{flex:1 1 100%;}
+  .pbtn{font-size:13px;padding:6px 7px;}
+  .stl{font-size:12px;}
+  .ibox{font-size:13px;}
+  .main{flex:none;}
+  .tabs{padding:0 8px;}
+  .tab{padding:8px 10px;font-size:12px;}
+  .content{height:auto;}
+  .panel.on{flex-direction:column;}
+  .mapwrap,#mapwrap-nat{height:62vh;min-height:320px;flex:none;width:100%;}
+  .slide-pane svg, #svgSeoul{max-width:100%;max-height:100%;}
+  .apanel{width:100%;min-width:0;border-left:none;border-top:1px solid #e2e5ed;max-height:none;padding:12px 10px;}
+  .ap-hd{font-size:14px;}
+  .ap-desc,.adesc,.hint{font-size:13px;}
+  .astat{font-size:14px;}
+  .atit,.sec-hd{font-size:13px;}
+  .back-btn{font-size:11px;padding:5px 10px;}
+  .breadcrumb{font-size:10px;}
+  .hint-pill{font-size:10px;padding:4px 10px;max-width:90%;white-space:normal;text-align:center;}
+  .zoom-btns{bottom:8px;right:8px;}
+  .zoom-btn{width:34px;height:34px;font-size:18px;}
+}
+@media (max-width:420px){
+  .side>div{min-width:100%;}
+  .mapwrap,#mapwrap-nat{height:55vh;min-height:280px;}
+}
 .ap-kv{display:flex;justify-content:space-between;align-items:center;background:#f0f4ff;border-radius:5px;padding:5px 8px;font-size:17px;}
 .ap-lbl{color:#6b7280;font-weight:500;}
 .ap-val{color:#2563eb;font-weight:700;}
